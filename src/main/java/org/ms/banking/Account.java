@@ -43,7 +43,13 @@ public class Account {
 
     private synchronized void rebuildPrefix() {
         outgoingPrefix.clear();
-        outgoingEvents.sort(Comparator.comparingInt(Transaction::getTimestamp));
+        // sort by timestamp using simple Comparator (avoid lambdas)
+        Collections.sort(outgoingEvents, new Comparator<Transaction>() {
+            @Override
+            public int compare(Transaction t1, Transaction t2) {
+                return Integer.compare(t1.getTimestamp(), t2.getTimestamp());
+            }
+        });
         long cum = 0L;
         for (Transaction t : outgoingEvents) {
             cum += t.getAmount();

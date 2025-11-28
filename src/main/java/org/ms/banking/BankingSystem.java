@@ -1,7 +1,6 @@
 package org.ms.banking;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class BankingSystem {
     private final Map<String, Account> accounts = new HashMap<>();
@@ -56,17 +55,27 @@ public class BankingSystem {
         if (timestamp >= latestProcessedTimestamp) {
             return topSpendersFast(n);
         }
-        List<Map.Entry<String, Long>> list = new ArrayList<>();
+        // Build a simple list of account totals using a small helper class for clarity
+        List<AccountTotal> list = new ArrayList<AccountTotal>();
         for (Map.Entry<String, Account> e : accounts.entrySet()) {
+            String id = e.getKey();
             long out = e.getValue().getOutgoingSumUpTo(timestamp);
-            list.add(new AbstractMap.SimpleEntry<>(e.getKey(), out));
+            list.add(new AccountTotal(id, out));
         }
-        list.sort((a, b) -> {
-            int cmp = Long.compare(b.getValue(), a.getValue());
-            if (cmp != 0) return cmp;
-            return a.getKey().compareTo(b.getKey());
+        // sort by total desc, then id asc
+        Collections.sort(list, new Comparator<AccountTotal>() {
+            @Override
+            public int compare(AccountTotal a, AccountTotal b) {
+                int cmp = Long.compare(b.total, a.total);
+                if (cmp != 0) return cmp;
+                return a.accountId.compareTo(b.accountId);
+            }
         });
-        return list.stream().limit(n).map(Map.Entry::getKey).collect(Collectors.toList());
+        List<String> result = new ArrayList<String>();
+        for (int i = 0; i < list.size() && result.size() < n; i++) {
+            result.add(list.get(i).accountId);
+        }
+        return result;
     }
 
     // Fast top spenders using the maintained ranking (O(n) to collect top n where n requested)
@@ -152,15 +161,29 @@ public class BankingSystem {
         return accounts.get(accountId);
     }
 
+    // Small helper to hold account id and its outgoing total for sorting clarity
+    private static class AccountTotal {
+        String accountId;
+        long total;
+
+        AccountTotal(String accountId, long total) {
+            this.accountId = accountId;
+            this.total = total;
+        }
+    }
+
     // Helper class used for ranking accounts by total outgoing amount (desc), then id (asc)
     private static class AccountRank {
         final String accountId;
         final long amount;
 
-        static final Comparator<AccountRank> COMPARATOR = (a, b) -> {
-            int cmp = Long.compare(b.amount, a.amount); // desc
-            if (cmp != 0) return cmp;
-            return a.accountId.compareTo(b.accountId); // asc
+        static final Comparator<AccountRank> COMPARATOR = new Comparator<AccountRank>() {
+            @Override
+            public int compare(AccountRank a, AccountRank b) {
+                int cmp = Long.compare(b.amount, a.amount); // desc
+                if (cmp != 0) return cmp;
+                return a.accountId.compareTo(b.accountId); // asc
+            }
         };
 
         AccountRank(String accountId, long amount) {
