@@ -1,4 +1,4 @@
-package org.ms.banking;
+package org.ms;
 
 public enum PaymentStatus {
     SCHEDULED,
